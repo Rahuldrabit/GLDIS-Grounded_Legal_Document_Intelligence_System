@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GLDIS — Grounded Legal Document Intelligence System</title>
+  <meta name="description" content="AI-powered legal document processing: VLM understanding, hybrid retrieval, grounded draft generation, and operator feedback learning." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚖</span>
+        <div>
+          <span class="logo-title">GLDIS</span>
+          <span class="logo-sub">Grounded Legal Document Intelligence · Pearson Specter Litt</span>
+        </div>
+      </div>
+      <div class="header-status" id="headerStatus">
+        <span class="status-dot"></span>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" data-tab="upload"       id="tab-upload"       role="tab">📄 Upload &amp; Process</button>
+    <button class="tab-btn"        data-tab="draft"        id="tab-draft"        role="tab">✍ Generate Draft</button>
+    <button class="tab-btn"        data-tab="feedback"     id="tab-feedback"     role="tab">🔄 Edit &amp; Feedback</button>
+    <button class="tab-btn"        data-tab="improvements" id="tab-improvements" role="tab">📈 Improvements</button>
+  </nav>
+
+  <main class="main">
+
+    <!-- ── TAB 1: Upload & Process ─────────────────────────────────────── -->
+    <section class="tab-content active" id="tab-upload-content" role="tabpanel">
+      <div class="two-col">
+        <div class="card">
+          <h2 class="card-title">Upload Document</h2>
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop a file here or click to browse">
+            <div class="drop-icon">📁</div>
+            <p class="drop-text">Drop a file here or <label for="fileInput" class="link-btn">browse</label></p>
+            <p class="drop-hint">PDF, PNG, JPEG, TIFF, TXT — scanned or digital</p>
+            <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.txt" hidden />
+          </div>
+          <div class="pipeline-stages" id="pipelineStages" aria-live="polite">
+            <div class="stage" id="stage-upload">  <span class="stage-dot"></span> Upload</div>
+            <div class="stage" id="stage-ocr">     <span class="stage-dot"></span> VLM / OCR</div>
+            <div class="stage" id="stage-chunk">   <span class="stage-dot"></span> Chunking</div>
+            <div class="stage" id="stage-index">   <span class="stage-dot"></span> Indexing</div>
+            <div class="stage" id="stage-done">    <span class="stage-dot"></span> Ready</div>
+          </div>
+          <div id="uploadStatus" class="status-box hidden" role="status"></div>
+          <button class="btn btn-primary" id="btnUpload" disabled>Upload &amp; Process</button>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Documents</h2>
+          <button class="btn btn-ghost btn-sm" id="btnRefreshDocs">↻ Refresh</button>
+          <div id="docList" class="doc-list" aria-live="polite">
+            <p class="muted">No documents yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB 2: Generate Draft ───────────────────────────────────────── -->
+    <section class="tab-content" id="tab-draft-content" role="tabpanel">
+      <div class="two-col draft-grid">
+        <!-- Left: controls -->
+        <div class="card">
+          <h2 class="card-title">Generate Draft</h2>
+          <label class="field-label" for="draftDocSelect">Select Document</label>
+          <select id="draftDocSelect" class="select">
+            <option value="">— select a processed document —</option>
+          </select>
+          <label class="field-label" for="draftQuery">Query / Instruction</label>
+          <textarea id="draftQuery" class="textarea" rows="3" placeholder="Generate a case fact summary and internal memo draft."></textarea>
+          <label class="field-label" for="draftTopK">Evidence Passages (top-K)</label>
+          <input type="number" id="draftTopK" class="input" value="5" min="1" max="20" />
+          <button class="btn btn-primary" id="btnGenerate">Generate Draft</button>
+          <div id="draftStatus" class="status-box hidden" role="status"></div>
+
+          <div id="groundingPanel" class="grounding-panel hidden">
+            <div class="grounding-header">Grounding Score</div>
+            <div class="grounding-bar-wrap">
+              <div class="grounding-bar" id="groundingBar"></div>
+            </div>
+            <span id="groundingLabel" class="grounding-label"></span>
+          </div>
+
+          <!-- Evidence panel -->
+          <div id="evidencePanel" class="evidence-panel hidden">
+            <h3 class="evidence-title">📌 Evidence Passages
+              <span class="evidence-hint">Click a sentence in the draft to highlight its source</span>
+            </h3>
+            <div id="evidenceList"></div>
+          </div>
+        </div>
+
+        <!-- Right: draft output -->
+        <div class="card card-draft">
+          <div class="draft-header">
+            <h2 class="card-title">Generated Draft <span id="draftId" class="badge hidden"></span></h2>
+            <div class="draft-actions">
+              <button class="btn btn-ghost btn-sm" id="btnLoadToFeedback" style="display:none">
+                ✏ Edit in Feedback Tab
+              </button>
+              <button class="btn btn-ghost btn-sm" id="btnCopyDraft" style="display:none">⎘ Copy</button>
+            </div>
+          </div>
+          <div id="draftOutput" class="draft-output" tabindex="0">
+            <p class="muted">Draft will appear here after generation.</p>
+          </div>
+          <div id="groundingLegend" class="grounding-legend hidden">
+            <span class="legend-item grounded-sentence">■ Grounded</span>
+            <span class="legend-item uncertain-sentence">■ Uncertain</span>
+            <span class="legend-item ungrounded-sentence">■ Ungrounded</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB 3: Edit & Feedback ──────────────────────────────────────── -->
+    <section class="tab-content" id="tab-feedback-content" role="tabpanel">
+      <div class="card">
+        <h2 class="card-title">Submit Operator Edit</h2>
+        <div class="two-col">
+          <div>
+            <label class="field-label" for="fbDraftId">Draft ID</label>
+            <input type="text" id="fbDraftId" class="input" placeholder="paste draft_id here" />
+            <label class="field-label" for="fbOriginal">Original Draft</label>
+            <textarea id="fbOriginal" class="textarea" rows="14" placeholder="Paste or load the original generated draft..."></textarea>
+          </div>
+          <div>
+            <label class="field-label" for="fbEdited">Edited Draft (your corrections)</label>
+            <textarea id="fbEdited" class="textarea" rows="8" placeholder="Paste your corrected version here..."></textarea>
+            <label class="field-label" for="fbType">Feedback Type</label>
+            <select id="fbType" class="select">
+              <option value="other">Other</option>
+              <option value="missing_fact">Missing Fact</option>
+              <option value="incorrect_fact">Incorrect Fact</option>
+              <option value="hallucination">Hallucination</option>
+              <option value="poor_structure">Poor Structure</option>
+              <option value="irrelevant_evidence">Irrelevant Evidence</option>
+            </select>
+            <label class="field-label" for="fbComment">Reviewer Comment (optional)</label>
+            <input type="text" id="fbComment" class="input" placeholder="e.g. Wrong date on line 3" />
+            <div class="diff-preview hidden" id="diffPreview">
+              <div class="diff-preview-label">Change Preview</div>
+              <div id="diffPreviewContent" class="diff-content"></div>
+            </div>
+            <button class="btn btn-primary" id="btnSubmitFeedback">Submit Feedback</button>
+          </div>
+        </div>
+        <div id="fbStatus" class="status-box hidden" role="status"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Recent Feedback</h2>
+        <button class="btn btn-ghost btn-sm" id="btnRefreshFeedback">↻ Refresh</button>
+        <div id="feedbackHistory" class="feedback-history" aria-live="polite">
+          <p class="muted">No feedback submitted yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB 4: Improvements ────────────────────────────────────────── -->
+    <section class="tab-content" id="tab-improvements-content" role="tabpanel">
+      <div class="two-col">
+        <div class="card">
+          <h2 class="card-title">Improvement Statistics</h2>
+          <button class="btn btn-ghost btn-sm" id="btnRefreshImprovements">↻ Refresh</button>
+          <div id="improvementStats" class="stat-grid" aria-live="polite">
+            <p class="muted">Loading...</p>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="card-title">Learned Style Rules</h2>
+          <div id="styleRules" class="rules-list" aria-live="polite">
+            <p class="muted">No rules learned yet. Submit feedback to start learning.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Edit Similarity Trend</h2>
+        <p class="muted-sm">Higher similarity = operator edited less = drafts are improving over time.</p>
+        <div id="trendChart" class="trend-chart" aria-label="Improvement trend chart"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Few-Shot Example Pool</h2>
+        <p class="muted-sm">High-quality reviewed drafts injected into future generation prompts.</p>
+        <div id="fewShotList" class="few-shot-list" aria-live="polite">
+          <p class="muted">Loading...</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

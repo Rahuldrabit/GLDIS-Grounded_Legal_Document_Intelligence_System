@@ -1,0 +1,51 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# GLDIS Default Settings — Reference Documentation
+# All values here are the application defaults (see core/config.py).
+# Override via environment variables or .env file.
+# ──────────────────────────────────────────────────────────────────────────────
+
+database:
+  url: "sqlite:///./data/gldis.db"
+  # PostgreSQL: "postgresql://user:password@localhost:5432/gldis"
+
+openai:
+  api_key: ""               # Set OPENAI_API_KEY env var
+  model: "gpt-4.1"
+  base_url: "https://api.openai.com/v1"
+
+vlm:
+  enabled: false            # Set VLM_ENABLED=true when LM Studio is running
+  model: "qwen2.5-vl-7b-instruct"
+  api_base: "http://localhost:1234/v1"
+  confidence_threshold: 0.6
+  max_tokens: 4000
+
+ocr:
+  tesseract_cmd: "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+
+embedding:
+  model: "BAAI/bge-large-en-v1.5"
+  batch_size: 32
+
+storage:
+  upload_dir: "./data/uploads"
+  faiss_index_path: "./data/faiss_index"
+  bm25_index_path: "./data/bm25_index"
+  feedback_store_path: "./data/feedback"
+
+chunking:
+  target_tokens: 400
+  overlap_tokens: 75
+
+retrieval:
+  top_k: 10
+  rerank_top_k: 5
+
+generation:
+  max_evidence_tokens: 3000
+  temperature: 0.1
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
