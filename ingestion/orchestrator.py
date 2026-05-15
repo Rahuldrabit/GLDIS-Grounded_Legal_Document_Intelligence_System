@@ -248,7 +248,7 @@ def run_pipeline(document_id: str, db: Session) -> dict:
 
     # Index blocks/chunks in Neo4j graph store (best-effort)
     try:
-        index_blocks_in_graph(document_id, chunks)
+        index_blocks_in_graph(document_id, chunks, filename=doc.original_filename)
     except Exception as e:
         logger.warning(f"[{document_id}] Graph indexing failed: {e}. Continuing.")
 

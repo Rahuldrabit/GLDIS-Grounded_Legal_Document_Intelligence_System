@@ -183,17 +183,18 @@ def _union_bboxes(bboxes: List[List[float]]) -> List[float]:
 def index_blocks_in_graph(
     document_id: str,
     chunks: List,
+    filename: str = "",
 ) -> None:
     """
     Index chunks and their block references in Neo4j graph store.
     """
     try:
         from retrieval.graph_store import get_graph_store
-        
+
         graph_store = get_graph_store()
-        if graph_store:
-            graph_store.index_document(document_id)
-            graph_store.index_chunks(chunks)
+        if graph_store and graph_store.enabled:
+            graph_store.index_document(document_id, filename=filename)
+            graph_store.index_chunks(chunks, document_id=document_id)
             logger.info(f"Indexed blocks/chunks for {document_id} in Neo4j")
     except Exception as e:
         logger.warning(f"Graph indexing failed: {e}. Continuing without Neo4j.")
