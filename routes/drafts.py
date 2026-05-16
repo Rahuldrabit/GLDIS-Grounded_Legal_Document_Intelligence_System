@@ -80,6 +80,8 @@ def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
     # Get improvement context from feedback loop
     improvement_ctx = _improvement_loop.get_generation_context(db)
 
+    draft_type = getattr(request, "draft_type", "case_summary_memo") or "case_summary_memo"
+
     # Generate draft
     draft = _generator.generate(
         request=request,
@@ -87,6 +89,7 @@ def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
         structured_data=structured,
         few_shot_examples=improvement_ctx.get("few_shot_examples"),
         style_rules=improvement_ctx.get("style_rules"),
+        draft_type=draft_type,
     )
 
     # Persist draft to DB
@@ -98,6 +101,7 @@ def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
         evidence_used=[c.chunk_id for c in evidence],
         citations=[c.model_dump() for c in draft.citations],
         grounding_score=draft.grounding_score,
+        draft_type=draft_type,
     )
     db.add(db_draft)
     db.commit()

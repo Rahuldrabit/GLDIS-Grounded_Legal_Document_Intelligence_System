@@ -31,6 +31,10 @@ class FeedbackType(str, Enum):
     OTHER = "other"
 
 
+class DraftType(str, Enum):
+    CASE_SUMMARY_MEMO = "case_summary_memo"  # Default: combined Case Fact Summary + Internal Memo
+
+
 class OCREngine(str, Enum):
     PYMUPDF = "pymupdf"
     TESSERACT = "tesseract"
@@ -169,6 +173,7 @@ class DraftRequest(BaseModel):
     document_id: str
     query: Optional[str] = "Generate a case fact summary and internal memo draft."
     top_k: int = Field(default=5, ge=1, le=20)
+    draft_type: str = DraftType.CASE_SUMMARY_MEMO
 
 
 class Citation(BaseModel):

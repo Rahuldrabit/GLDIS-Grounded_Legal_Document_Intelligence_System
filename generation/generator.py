@@ -82,6 +82,7 @@ class DraftGenerator:
         structured_data: Optional[StructuredExtraction] = None,
         few_shot_examples: Optional[list] = None,
         style_rules: Optional[List[str]] = None,
+        draft_type: Optional[str] = None,
     ) -> DraftResponse:
         """
         Generate a grounded draft from evidence chunks.
@@ -109,6 +110,13 @@ class DraftGenerator:
                 "Deadlines": structured_data.deadlines[:3],
             }
 
+        # Resolve draft type (param > request field > default)
+        resolved_draft_type = (
+            draft_type
+            or getattr(request, "draft_type", None)
+            or "case_summary_memo"
+        )
+
         # Build messages
         messages = build_generation_prompt(
             query=request.query or "Generate a case fact summary and internal memo.",
@@ -116,6 +124,7 @@ class DraftGenerator:
             few_shot_examples=few_shot_examples,
             style_rules=style_rules,
             structured_fields=sf_dict,
+            draft_type=resolved_draft_type,
         )
 
         # Call LLM (initial pass)

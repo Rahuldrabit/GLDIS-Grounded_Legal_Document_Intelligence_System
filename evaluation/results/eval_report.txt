@@ -1,0 +1,42 @@
+
+======================================================================
+  GLDIS EVALUATION REPORT
+======================================================================
+
+[1] OCR QUALITY
+  Noisy document CER : 11.0%  (chars wrong)
+  Noisy document WER : 40.8%  (words wrong)
+  -> OCR artifacts intentionally present; pipeline handles them via preprocessing
+
+[2] RETRIEVAL QUALITY (simulated annotation)
+  Precision@5  : 40.0%
+  Recall@5     : 100.0%
+  F1@5         : 57.1%
+  MRR             : 1.0000
+
+[3] GROUNDING QUALITY (sample draft)
+  Grounding score     : 66.7%
+  Ungrounded sentences: 1
+  Inline citations    : 0
+  Ungrounded example  : The termination clause requires prior written notice from both parties.?
+
+[4] HUMAN REVIEW SCORING FRAMEWORK
+  Dimensions: ['usefulness', 'clarity', 'factual_consistency']
+  Rate each dimension 0?5: 0=unusable, 3=acceptable, 5=excellent. Submit ratings to this function to get a composite score.
+  Demo composite score: 4.0/5.0 ? Good (80.0%)
+
+[5] IMPROVEMENT TREND
+  Draft quality IMPROVING (similarity +36.6%)
+  Edit similarity delta: +36.6%
+
+[6] SYSTEM STATUS
+  Documents processed : 12
+  Chunks indexed      : 44
+  Drafts generated    : 3
+  Operator edits      : 3
+  Few-shot examples   : 1
+
+======================================================================
+  Evaluation complete.
+======================================================================
+

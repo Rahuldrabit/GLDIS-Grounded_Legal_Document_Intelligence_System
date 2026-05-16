@@ -21,6 +21,12 @@ class EditType(str, Enum):
     REPLACEMENT = "replacement"  # Operator changed content
 
 
+class EditClassification(str, Enum):
+    FIX           = "fix"           # Fact correction for this specific doc only
+    RULE          = "rule"          # Generalizable style/structural rule
+    CASE_SPECIFIC = "case_specific" # Ambiguous; store but do not inject into prompts
+
+
 @dataclass
 class EditOperation:
     edit_type:    EditType
@@ -36,8 +42,9 @@ class EditAnalysis:
     edit_distance:   int                         # Levenshtein approximation
     similarity:      float                       # 0–1, higher = more similar
     operations:      List[EditOperation] = field(default_factory=list)
-    inferred_rules:  List[str]          = field(default_factory=list)
-    dominant_type:   str = "other"
+    inferred_rules:     List[str] = field(default_factory=list)
+    case_specific_fixes: List[str] = field(default_factory=list)
+    dominant_type:       str = "other"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -90,26 +97,73 @@ def _classify_edit(original: str, replacement: str, edit_type: EditType) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Generalizability classifier
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _classify_generalizability(op: EditOperation) -> EditClassification:
+    """
+    Decide whether a single edit should become a universal RULE injected into
+    all future prompts, a one-off FIX for this document's facts, or a
+    CASE_SPECIFIC correction that is stored but not injected.
+
+    Priority order:
+    1. Any edit touching _FACT_SIGNALS (dates, amounts, case IDs) is a FIX —
+       it corrects this document's facts, not a reusable style pattern.
+    2. Structural/formatting changes (poor_structure) are always RULE.
+    3. Hallucination deletions are always RULE (universally applicable).
+    4. Tiny replacements (≤3 word delta) are CASE_SPECIFIC — too ambiguous.
+    5. Everything else defaults to RULE.
+    """
+    if _FACT_SIGNALS.search(op.original) or _FACT_SIGNALS.search(op.replacement):
+        return EditClassification.FIX
+
+    if op.category == "poor_structure":
+        return EditClassification.RULE
+
+    if op.category == "hallucination":
+        return EditClassification.RULE
+
+    if op.edit_type == EditType.REPLACEMENT:
+        if abs(len(op.original.split()) - len(op.replacement.split())) <= 3:
+            return EditClassification.CASE_SPECIFIC
+
+    return EditClassification.RULE
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Rule inference from edit patterns
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _infer_rules(operations: List[EditOperation]) -> List[str]:
+def _infer_rules(
+    operations: List[EditOperation],
+) -> tuple[List[str], List[str]]:
     """
-    Extract reusable style/content rules from edit patterns.
-    These are injected into future generation prompts.
-    """
-    rules = []
-    cats = [op.category for op in operations]
+    Partition operations by generalizability, then extract rules.
 
-    if cats.count("hallucination") >= 1:
+    Returns:
+        (universal_rules, case_specific_fixes)
+        universal_rules    — injected into future prompts for ALL documents.
+        case_specific_fixes — stored for record-keeping only; not injected.
+    """
+    rule_ops = [op for op in operations
+                if _classify_generalizability(op) == EditClassification.RULE]
+    fix_ops  = [op for op in operations
+                if _classify_generalizability(op) == EditClassification.FIX]
+
+    rules: List[str] = []
+    fixes: List[str] = []
+
+    # ── Universal rules (from RULE-classified operations only) ────────────────
+    rule_cats = [op.category for op in rule_ops]
+
+    if rule_cats.count("hallucination") >= 1:
         rules.append("Remove speculative language — only state facts directly supported by evidence.")
 
-    if cats.count("missing_fact") >= 1:
+    if rule_cats.count("missing_fact") >= 1:
         rules.append("Ensure all key facts from the evidence (dates, amounts, parties) are included.")
 
-    if cats.count("poor_structure") >= 1:
-        # Check if operator added or removed bullet points
-        for op in operations:
+    if rule_cats.count("poor_structure") >= 1:
+        for op in rule_ops:
             if op.category == "poor_structure":
                 if _STRUCTURE_SIGNALS.search(op.replacement) and not _STRUCTURE_SIGNALS.search(op.original):
                     rules.append("Use bullet-point lists for key facts, not dense paragraphs.")
@@ -118,16 +172,23 @@ def _infer_rules(operations: List[EditOperation]) -> List[str]:
                     rules.append("Use concise prose for summaries, not fragmented bullet lists.")
                     break
 
-    if cats.count("incorrect_fact") >= 1:
+    if rule_cats.count("incorrect_fact") >= 1:
         rules.append("Double-check all numerical values and dates against the evidence passages before including them.")
 
-    if cats.count("style") >= 2:
-        # Check for consistent length reduction
-        deletions = [op for op in operations if op.edit_type == EditType.DELETION]
-        if len(deletions) > len(operations) // 2:
+    if rule_cats.count("style") >= 2:
+        deletions = [op for op in rule_ops if op.edit_type == EditType.DELETION]
+        if len(deletions) > len(rule_ops) // 2:
             rules.append("Keep drafts concise — avoid redundant sentences that repeat evidence verbatim.")
 
-    return rules
+    # ── Case-specific fixes (stored, never injected) ──────────────────────────
+    for op in fix_ops:
+        snippet = (op.original[:60] + "…") if len(op.original) > 60 else op.original
+        rep     = (op.replacement[:60] + "…") if len(op.replacement) > 60 else op.replacement
+        fixes.append(
+            f"[{op.edit_type.value.upper()}] fact correction: '{snippet}' → '{rep}'"
+        )
+
+    return rules, fixes
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -187,7 +248,7 @@ class DiffAnalyzer:
                 category=category,
             ))
 
-        inferred_rules = _infer_rules(operations)
+        inferred_rules, case_specific_fixes = _infer_rules(operations)
 
         # Determine dominant category
         cats = [op.category for op in operations]
@@ -200,12 +261,13 @@ class DiffAnalyzer:
             similarity=round(similarity, 4),
             operations=operations,
             inferred_rules=inferred_rules,
+            case_specific_fixes=case_specific_fixes,
             dominant_type=dominant_type,
         )
 
         logger.info(
             f"Diff analysis: similarity={similarity:.2f}, "
             f"ops={len(operations)}, dominant={dominant_type}, "
-            f"rules={len(inferred_rules)}"
+            f"rules={len(inferred_rules)}, fixes={len(case_specific_fixes)}"
         )
         return analysis

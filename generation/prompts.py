@@ -4,7 +4,11 @@ Supports dynamic injection of few-shot examples from the feedback loop.
 """
 from __future__ import annotations
 
-from typing import List, Optional
+import logging
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -62,6 +66,25 @@ OUTPUT FORMAT:
 ### Evidence Gaps
 [List any areas where the provided documents are insufficient]
 ---"""
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Draft template registry
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class DraftTemplate:
+    name: str
+    system_prompt: str
+    default_query: str = "Generate a case fact summary and internal memo draft."
+
+
+DRAFT_TEMPLATE_REGISTRY: Dict[str, DraftTemplate] = {
+    "case_summary_memo": DraftTemplate(
+        name="Case Fact Summary + Internal Memo",
+        system_prompt=SYSTEM_PROMPT,
+    ),
+}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -128,13 +151,20 @@ def build_generation_prompt(
     few_shot_examples: Optional[list] = None,
     style_rules: Optional[List[str]] = None,
     structured_fields: Optional[dict] = None,
+    draft_type: str = "case_summary_memo",
 ) -> list:
     """
     Build the complete message list for the LLM API call.
     Returns a list of dicts with 'role' and 'content' keys.
     """
-    # System message
-    system_content = SYSTEM_PROMPT
+    # Resolve template from registry
+    template = DRAFT_TEMPLATE_REGISTRY.get(draft_type)
+    if template is None:
+        logger.warning(
+            f"Unknown draft_type '{draft_type}'; falling back to case_summary_memo"
+        )
+        template = DRAFT_TEMPLATE_REGISTRY["case_summary_memo"]
+    system_content = template.system_prompt
 
     # Inject style guide if available
     if style_rules:

@@ -111,6 +111,7 @@ class Draft(Base):
     citations = Column(JSON, default=list)        # list of citation dicts
     grounding_score = Column(Float, default=0.0)
     model_used = Column(String, default="gpt-4.1")
+    draft_type = Column(String, default="case_summary_memo", nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     document = relationship("Document", back_populates="drafts")

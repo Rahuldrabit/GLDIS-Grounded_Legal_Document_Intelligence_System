@@ -149,6 +149,11 @@ class FeedbackEngine:
         for rule in analysis.inferred_rules:
             lines.append(f"  - {rule}")
 
+        if analysis.case_specific_fixes:
+            lines.append("\nCase-specific fixes (not injected into prompts):")
+            for fix in analysis.case_specific_fixes:
+                lines.append(f"  [FIX] {fix}")
+
         lines.append("\nEdit operations (top 10):")
         for op in analysis.operations[:10]:
             lines.append(

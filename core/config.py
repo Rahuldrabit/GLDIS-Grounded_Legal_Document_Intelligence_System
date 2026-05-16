@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     reasoning_api_base: str = "http://localhost:8001/v1"  # Separate model server
     verifier_model: str = "llama-4-8b"  # Verification model ID
     verifier_api_base: str = "http://localhost:8002/v1"  # Separate model server
-    verifier_enabled: bool = False
+    verifier_enabled: bool = True
     max_correction_iterations: int = 2
 
     # ── Stage 1: MinerU (optional layout bridge) ──────────────────────────────
