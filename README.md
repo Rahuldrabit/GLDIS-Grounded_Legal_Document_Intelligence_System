@@ -1,6 +1,5 @@
 # Grounded Legal Document Intelligence System (GLDIS)
 
-**Client:** Pearson Specter Litt  
 **Version:** 3.0.0  
 **Stack:** Python 3.11 · FastAPI · LM Studio OpenAI-compatible servers · FAISS · BM25 · Neo4j · Mem0  
 
