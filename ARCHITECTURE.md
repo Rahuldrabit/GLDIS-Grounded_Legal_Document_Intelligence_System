@@ -168,35 +168,35 @@ The diagrams below summarize the runtime routing and fallback logic for Stage 1 
 
 ```mermaid
 flowchart TD
-    subgraph S1 [Stage 1 — Document Understanding]
-        A[Start: uploaded doc] --> B{Is PDF with text layer?}
-        B -- Yes --> C[PyMuPDF (digital PDF) → Done]
-        B -- No --> D{Images available & VLM enabled?}
-        D -- Yes --> E{MinerU block guidance available?}
-        E -- Yes --> F[VLM block extraction]
-        E -- No --> G[VLM full-page extraction]
-        F --> H{avg_conf >= vlm_confidence_threshold}
+    subgraph S1["Stage 1 - Document Understanding"]
+        A["Start: uploaded doc"] --> B{"Is PDF with text layer?"}
+        B -- Yes --> C["PyMuPDF (digital PDF) -> Done"]
+        B -- No --> D{"Images available and VLM enabled?"}
+        D -- Yes --> E{"MinerU block guidance available?"}
+        E -- Yes --> F["VLM block extraction"]
+        E -- No --> G["VLM full-page extraction"]
+        F --> H{"avg_conf >= vlm_confidence_threshold"}
         G --> H
-        H -- Yes --> I[Use VLM output → Continue]
-        H -- No --> J[Tesseract OCR]
-        J --> K{avg_conf >= 0.6}
-        K -- Yes --> L[Use Tesseract output → Continue]
-        K -- No --> M[PaddleOCR if installed → Continue]
-        M --> N[If no OCR engines → Mark failed]
+        H -- Yes --> I["Use VLM output -> Continue"]
+        H -- No --> J["Tesseract OCR"]
+        J --> K{"avg_conf >= 0.6"}
+        K -- Yes --> L["Use Tesseract output -> Continue"]
+        K -- No --> M["PaddleOCR if installed -> Continue"]
+        M --> N["If no OCR engines -> Mark failed"]
     end
 
-    subgraph S3 [Stage 3 — Generation & Verification]
-        X[Start: Draft request + evidence] --> Y{Reasoner endpoint configured?}
-        Y -- Yes --> Z[Call Reasoner → Success?]
-        Z -- Yes --> Z1[Use Reasoner output]
-        Z -- No --> P[Call resolved LLM provider]
+    subgraph S3["Stage 3 - Generation and Verification"]
+        X["Start: Draft request + evidence"] --> Y{"Reasoner endpoint configured?"}
+        Y -- Yes --> Z["Call Reasoner -> Success?"]
+        Z -- Yes --> Z1["Use Reasoner output"]
+        Z -- No --> P["Call resolved LLM provider"]
         Y -- No --> P
-        P --> Q{Provider call succeeded?}
-        Q -- Yes --> Q1[Use provider output]
-        Q -- No --> R[Mock generator → Structured template]
-        Q1 --> S[Optional verifier loop (bounded by max_correction_iterations)]
+        P --> Q{"Provider call succeeded?"}
+        Q -- Yes --> Q1["Use provider output"]
+        Q -- No --> R["Mock generator -> Structured template"]
+        Q1 --> S["Optional verifier loop (bounded by max_correction_iterations)"]
         Z1 --> S
-        S --> T[Finalize draft + grounding checks]
+        S --> T["Finalize draft + grounding checks"]
     end
 ```
 
