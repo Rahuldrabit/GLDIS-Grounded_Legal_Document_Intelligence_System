@@ -11,7 +11,7 @@ This document describes the *implemented* architecture of **GLDIS (Grounded Lega
 
 > Note: There is also an `api/` package containing another FastAPI app (`api/main.py`). The actively used app (tests, README quickstart) is `main.py` + `routes/`. Treat `api/` as *legacy/prototype* unless you intentionally run it.
 
-## End-to-end flow (single diagram)
+## End-to-end flow 
 
 ```mermaid
 flowchart LR
@@ -19,7 +19,7 @@ flowchart LR
 
   A --> D1[Upload\nPOST /api/documents/upload]
   D1 --> FS[(File store\n./data/uploads)]
-  D1 --> DB[(Database\nSQLite (default: ./data/gldis.db)\nor Postgres via DATABASE_URL)]
+  D1 --> DB[(Database\nSQLite default data/gldis.db\nor Postgres via DATABASE_URL)]
 
   A --> D2[Process\nPOST /api/documents/{id}/process(/sync)]
   D2 --> P[Ingestion orchestrator\ningestion/orchestrator.py]
@@ -137,4 +137,3 @@ Defined in `core/config.py` (loaded from `.env`):
 
 ---
 
-If you update core behavior (routing, endpoints, persistence), update this file *and* keep the README “Quickstart/API Reference” in sync.
