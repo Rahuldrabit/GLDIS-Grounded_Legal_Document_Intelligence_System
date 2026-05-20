@@ -46,11 +46,42 @@ copy .env.example .env
 # Leave LLM_PROVIDER blank to keep the legacy auto-selection behavior
 ```
 
-### 3. Run
+### 3. Run (backend + frontend)
+
+Backend (development - FastAPI + Uvicorn):
 
 ```bash
-python main.py
+# From repository root
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# or (legacy) python main.py
 # Open http://localhost:8000
+```
+
+Frontend (two options):
+
+- Option A — Serve UI from the backend (no Node required)
+
+```bash
+# Start the backend (see commands above) and open http://localhost:8000
+# The FastAPI server serves the zero-build UI from `static/` by default
+```
+
+- Option B — Frontend dev server (hot-reload, requires Node.js)
+
+```bash
+cd ui
+npm install
+npm run dev
+# Vite dev server typically runs at http://localhost:5173
+```
+
+To build the frontend for production and preview the build locally:
+
+```bash
+cd ui
+npm run build
+npm run preview
+# Or copy the built files into the backend `static/` directory to serve them from FastAPI
 ```
 
 ---
