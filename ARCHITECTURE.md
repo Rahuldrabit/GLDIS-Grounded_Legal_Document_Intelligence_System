@@ -11,47 +11,41 @@ This document describes the *implemented* architecture of **GLDIS (Grounded Lega
 
 > Note: There is also an `api/` package containing another FastAPI app (`api/main.py`). The actively used app (tests, README quickstart) is `main.py` + `routes/`. Treat `api/` as *legacy/prototype* unless you intentionally run it.
 
-## End-to-end flow 
+## Pipeline flowchart
 
 ```mermaid
-flowchart LR
-  U["User / UI"] -->|HTTP| A["FastAPI app\nmain.py"]
+flowchart TD
+  A["Start: document uploaded"] --> B{"File type?"}
 
-  A --> D1["Upload\nPOST /api/documents/upload"]
-  D1 --> FS[("File store\n./data/uploads")]
-  D1 --> DB[("Database\nSQLite default data/gldis.db\nor Postgres via DATABASE_URL")]
+  B -->|PDF| C["PDF to images @300 DPI\npreprocessing/pipeline.py pdf_to_images"]
+  B -->|Image or TXT| C2["Use raw file or image path"]
 
-  A --> D2["Process\nPOST /api/documents/:id/process\nPOST /api/documents/:id/process/sync"]
-  D2 --> P["Ingestion orchestrator\ningestion/orchestrator.py"]
+  C --> D["Run pipeline\ningestion/orchestrator.py run_pipeline"]
+  C2 --> D
 
-  P --> PP["Preprocess\nPDF->images @300DPI\npreprocessing/pipeline.py"]
-  PP --> OCR["Hybrid document understanding\nocr/hybrid_ocr.py"]
+  D --> E{"Block-guided VLM available\nand images present?"}
+  E -->|Yes| F["Block-guided VLM extraction\nocr/block_extraction_adapter.py extract_vlm_with_blocks"]
+  E -->|No| G["HybridOCR extraction\nocr/hybrid_ocr.py\nVLM-first when enabled"]
 
-  OCR -->|optional, best-effort| VLM["VLM extraction\nocr/vlm_extractor.py"]
-  OCR -->|digital PDF| MU["PyMuPDF text layer"]
-  OCR -->|fallback| T["Tesseract"]
-  OCR -->|fallback| PO["PaddleOCR"]
+  F --> H["Persist OCR artifacts\nartifacts/doc_id/ocr.json\nDB: vlm_query_logs + ocr_blocks"]
+  G --> H
 
-  OCR --> L["Layout parse\npreprocessing/layout_parser.py"]
-  L --> C["Chunking\npreprocessing/chunker.py"]
-  C --> E["Entity extraction\nextraction/rule_based.py + ner_extractor.py"]
+  H --> I{"Any text extracted?"}
+  I -->|No| X["Mark FAILED\nDocumentStatus.failed + error_message"]
+  I -->|Yes| J["Layout parsing\npreprocessing/layout_parser.py"]
 
-  C --> I["Hybrid indexing\nretrieval/hybrid_retriever.py"]
-  I --> F["FAISS vector index\nretrieval/vector_store.py"]
-  I --> B["BM25 sparse index\nretrieval/bm25_retriever.py"]
-  I -.->|optional| G["Neo4j GraphRAG\nretrieval/graph_store.py"]
+  J --> K["Semantic chunking\npreprocessing/chunker.py SemanticChunker"]
+  K --> L["Persist chunks\nDB: chunks\nartifacts/doc_id/chunks.json"]
 
-  A --> D3["Draft generation\nPOST /api/drafts/generate"]
-  D3 --> R["Retrieve evidence\nHybridRetriever.search\nBM25 + FAISS + RRF\noptional graph expansion"]
-  R --> GEN["DraftGenerator\ngeneration/generator.py"]
-  GEN -->|optional| VER["Verifier loop\ngeneration/verifier.py"]
-  GEN --> OUT["Draft + citations + grounding score\ngeneration/grounding.py"]
-  OUT --> DB
+  L --> M["Structured extraction\nextraction/rule_based.py + extraction/ner_extractor.py"]
+  M --> N["Persist structured_fields"]
 
-  A --> FB["Feedback\nPOST /api/feedback"]
-  FB --> IMP["Improvement loop\nfeedback/feedback_engine.py + improvement_loop.py"]
-  IMP -.->|optional| M0["Mem0 store\nfeedback/mem0_store.py"]
-  IMP --> DB
+  N --> O["Indexing\nretrieval/hybrid_retriever.py add_chunks"]
+  O --> P["FAISS index (dense)\nretrieval/vector_store.py"]
+  O --> Q["BM25 index (sparse)\nretrieval/bm25_retriever.py"]
+  O -.->|optional| R["Graph indexing\nretrieval/graph_store.py\nNeo4j"]
+
+  O --> S["Mark READY\nDocumentStatus.ready"]
 ```
 
 ## Pipeline stages (code-accurate)
@@ -136,4 +130,3 @@ Defined in `core/config.py` (loaded from `.env`):
 - `ui/` — optional React/Vite dev UI
 
 ---
-
