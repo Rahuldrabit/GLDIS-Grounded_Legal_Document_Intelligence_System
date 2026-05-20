@@ -15,42 +15,42 @@ This document describes the *implemented* architecture of **GLDIS (Grounded Lega
 
 ```mermaid
 flowchart LR
-  U[User / UI] -->|HTTP| A[FastAPI app\nmain.py]
+  U["User / UI"] -->|HTTP| A["FastAPI app\nmain.py"]
 
-  A --> D1[Upload\nPOST /api/documents/upload]
-  D1 --> FS[(File store\n./data/uploads)]
-  D1 --> DB[(Database\nSQLite default data/gldis.db\nor Postgres via DATABASE_URL)]
+  A --> D1["Upload\nPOST /api/documents/upload"]
+  D1 --> FS[("File store\n./data/uploads")]
+  D1 --> DB[("Database\nSQLite default data/gldis.db\nor Postgres via DATABASE_URL")]
 
-  A --> D2[Process\nPOST /api/documents/{id}/process(/sync)]
-  D2 --> P[Ingestion orchestrator\ningestion/orchestrator.py]
+  A --> D2["Process\nPOST /api/documents/:id/process\nPOST /api/documents/:id/process/sync"]
+  D2 --> P["Ingestion orchestrator\ningestion/orchestrator.py"]
 
-  P --> PP[Preprocess\nPDF->images @300DPI\npreprocessing/pipeline.py]
-  PP --> OCR[Hybrid document understanding\nocr/hybrid_ocr.py]
+  P --> PP["Preprocess\nPDF->images @300DPI\npreprocessing/pipeline.py"]
+  PP --> OCR["Hybrid document understanding\nocr/hybrid_ocr.py"]
 
-  OCR -->|optional, best-effort| VLM[VLM extraction\nocr/vlm_extractor.py]
-  OCR -->|digital PDF| MU[PyMuPDF text layer]
-  OCR -->|fallback| T[Tesseract]
-  OCR -->|fallback| PO[PaddleOCR]
+  OCR -->|optional, best-effort| VLM["VLM extraction\nocr/vlm_extractor.py"]
+  OCR -->|digital PDF| MU["PyMuPDF text layer"]
+  OCR -->|fallback| T["Tesseract"]
+  OCR -->|fallback| PO["PaddleOCR"]
 
-  OCR --> L[Layout parse\npreprocessing/layout_parser.py]
-  L --> C[Chunking\npreprocessing/chunker.py]
-  C --> E[Entity extraction\nextraction/rule_based.py + ner_extractor.py]
+  OCR --> L["Layout parse\npreprocessing/layout_parser.py"]
+  L --> C["Chunking\npreprocessing/chunker.py"]
+  C --> E["Entity extraction\nextraction/rule_based.py + ner_extractor.py"]
 
-  C --> I[Hybrid indexing\nretrieval/hybrid_retriever.py]
-  I --> F[FAISS vector index\nretrieval/vector_store.py]
-  I --> B[BM25 sparse index\nretrieval/bm25_retriever.py]
-  I -. optional .-> G[Neo4j GraphRAG\nretrieval/graph_store.py]
+  C --> I["Hybrid indexing\nretrieval/hybrid_retriever.py"]
+  I --> F["FAISS vector index\nretrieval/vector_store.py"]
+  I --> B["BM25 sparse index\nretrieval/bm25_retriever.py"]
+  I -.->|optional| G["Neo4j GraphRAG\nretrieval/graph_store.py"]
 
-  A --> D3[Draft generation\nPOST /api/drafts/generate]
-  D3 --> R[HybridRetriever.search()\nBM25 + FAISS + RRF\n(+ optional graph expansion)]
-  R --> GEN[DraftGenerator\ngeneration/generator.py]
-  GEN -->|optional| VER[Verifier loop\ngeneration/verifier.py]
-  GEN --> OUT[Draft + citations + grounding score\ngeneration/grounding.py]
+  A --> D3["Draft generation\nPOST /api/drafts/generate"]
+  D3 --> R["Retrieve evidence\nHybridRetriever.search\nBM25 + FAISS + RRF\noptional graph expansion"]
+  R --> GEN["DraftGenerator\ngeneration/generator.py"]
+  GEN -->|optional| VER["Verifier loop\ngeneration/verifier.py"]
+  GEN --> OUT["Draft + citations + grounding score\ngeneration/grounding.py"]
   OUT --> DB
 
-  A --> FB[Feedback\nPOST /api/feedback]
-  FB --> IMP[Improvement loop\nfeedback/feedback_engine.py + improvement_loop.py]
-  IMP -. optional .-> M0[Mem0 store\nfeedback/mem0_store.py]
+  A --> FB["Feedback\nPOST /api/feedback"]
+  FB --> IMP["Improvement loop\nfeedback/feedback_engine.py + improvement_loop.py"]
+  IMP -.->|optional| M0["Mem0 store\nfeedback/mem0_store.py"]
   IMP --> DB
 ```
 
