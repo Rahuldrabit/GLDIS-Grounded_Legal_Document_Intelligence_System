@@ -241,3 +241,51 @@ class ProcessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
+
+
+class DocumentListResponse(BaseModel):
+    document_id: str
+    filename: str
+    status: DocumentStatus
+    page_count: int
+    upload_time: datetime
+
+
+class DocumentDetailResponse(BaseModel):
+    document_id: str
+    filename: str
+    status: DocumentStatus
+    page_count: int
+    file_size: int
+    chunks_count: int
+    upload_time: datetime
+    processed_time: Optional[datetime] = None
+    error_message: Optional[str] = None
+    structured_fields: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class SearchResultItem(BaseModel):
+    chunk_id: str
+    document_id: str
+    text: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+    score: float
+    retrieval_method: str
+
+
+class SearchResultResponse(BaseModel):
+    query: str
+    document_id: Optional[str] = None
+    results_count: int
+    results: List[SearchResultItem]
+
+
+class EvidenceChunkResponse(BaseModel):
+    chunk_id: str
+    document_id: str
+    text: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+    token_count: int
+    chunk_index: int

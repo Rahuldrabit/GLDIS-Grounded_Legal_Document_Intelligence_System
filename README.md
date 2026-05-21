@@ -46,42 +46,32 @@ copy .env.example .env
 # Leave LLM_PROVIDER blank to keep the legacy auto-selection behavior
 ```
 
-### 3. Run (backend + frontend)
+### 3. Run (Backend & Frontend)
 
-Backend (development - FastAPI + Uvicorn):
+To run the full stack, you need to start the FastAPI backend and the Vite React frontend in two separate terminals.
 
+**Terminal 1: Start the Backend (FastAPI)**
 ```bash
-# From repository root
+# From the repository root
+# Activate your virtual environment first if you haven't (e.g. venv\Scripts\activate)
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-# or (legacy) python main.py
-# Open http://localhost:8000
 ```
+The backend API will be available at `http://localhost:8000`.
 
-Frontend (two options):
-
-- Option A — Serve UI from the backend (no Node required)
-
+**Terminal 2: Start the Frontend (React + Vite)**
 ```bash
-# Start the backend (see commands above) and open http://localhost:8000
-# The FastAPI server serves the zero-build UI from `static/` by default
-```
-
-- Option B — Frontend dev server (hot-reload, requires Node.js)
-
-```bash
+# Open a new terminal from the repository root
 cd ui
 npm install
 npm run dev
-# Vite dev server typically runs at http://localhost:5173
 ```
+The premium UI will be available at `http://localhost:5173`. Open this in your browser to interact with the system.
 
-To build the frontend for production and preview the build locally:
-
+*(Optional)* To build the frontend for production:
 ```bash
 cd ui
 npm run build
 npm run preview
-# Or copy the built files into the backend `static/` directory to serve them from FastAPI
 ```
 
 ---

@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from core.schemas import EvidenceChunk
+from core.schemas import EvidenceChunk, SearchResultResponse, EvidenceChunkResponse
 from db import models
 from db.session import get_db
 from retrieval.hybrid_retriever import HybridRetriever
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/search", tags=["retrieval"])
 _retriever = HybridRetriever()
 
 
-@router.post("")
+@router.post("", response_model=SearchResultResponse)
 def search(
     query: str,
     document_id: Optional[str] = None,
@@ -55,7 +55,7 @@ def search(
     }
 
 
-@router.get("/chunk/{chunk_id}")
+@router.get("/chunk/{chunk_id}", response_model=EvidenceChunkResponse)
 def get_chunk(chunk_id: str, db: Session = Depends(get_db)):
     """Retrieve a specific evidence chunk by ID."""
     chunk = db.query(models.Chunk).filter(models.Chunk.chunk_id == chunk_id).first()

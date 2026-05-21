@@ -5,11 +5,13 @@ import shutil
 import uuid
 from pathlib import Path
 
+from typing import List
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from core.config import get_settings
-from core.schemas import DocumentStatus, ProcessResponse, UploadResponse
+from core.schemas import DocumentStatus, ProcessResponse, UploadResponse, DocumentDetailResponse, DocumentListResponse
 from db import models
 from db.session import get_db
 from ingestion.orchestrator import run_pipeline
@@ -121,7 +123,7 @@ def process_document_sync(document_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/{document_id}")
+@router.get("/{document_id}", response_model=DocumentDetailResponse)
 def get_document(document_id: str, db: Session = Depends(get_db)):
     """Get document status, metadata, and extracted fields."""
     doc = db.query(models.Document).filter(models.Document.id == document_id).first()
@@ -156,7 +158,7 @@ def get_document(document_id: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("")
+@router.get("", response_model=List[DocumentListResponse])
 def list_documents(db: Session = Depends(get_db)):
     """List all documents with basic metadata."""
     docs = db.query(models.Document).order_by(models.Document.upload_time.desc()).all()

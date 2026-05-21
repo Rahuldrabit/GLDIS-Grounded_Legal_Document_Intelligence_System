@@ -1,0 +1,129 @@
+.document-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.back-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  transition: color var(--transition-fast);
+}
+
+.back-btn:hover {
+  color: var(--text-primary);
+}
+
+.detail-header {
+  padding: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.header-info h2 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 1.5rem;
+}
+
+.meta-stats {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.stat {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.stat span {
+  color: var(--text-secondary);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .content-grid {
+    grid-template-columns: 1fr 1.5fr;
+  }
+}
+
+.extracted-fields, .draft-generation {
+  padding: var(--space-6);
+}
+
+.empty-text {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-item {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.field-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.field-value {
+  color: var(--text-primary);
+}
+
+.field-conf {
+  color: var(--success);
+  text-align: right;
+}
+
+.draft-actions {
+  margin-bottom: var(--space-6);
+}
+
+.draft-result {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-color);
+}
+
+.score {
+  font-size: 0.875rem;
+  color: var(--accent-primary);
+  margin-bottom: var(--space-4);
+}
+
+.draft-text {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
