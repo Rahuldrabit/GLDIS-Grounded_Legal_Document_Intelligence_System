@@ -89,8 +89,6 @@ def link_chunks_to_blocks(
         pages: PageOCRResult list with block info
         block_lookup: Mapping (page, block_idx) → block_id
     """
-    import json
-    
     for chunk in chunks:
         try:
             # Find all blocks that intersect with this chunk's text
@@ -128,8 +126,8 @@ def link_chunks_to_blocks(
                 .first()
             )
             if db_chunk:
-                db_chunk.block_ids = json.dumps(contributing_block_ids)
-                db_chunk.bbox_union = json.dumps(bbox_union)
+                db_chunk.block_ids = contributing_block_ids
+                db_chunk.bbox_union = bbox_union
             
         except Exception as e:
             logger.warning(f"Failed to link chunk {chunk.chunk_id} to blocks: {e}")

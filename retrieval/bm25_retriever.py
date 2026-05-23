@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from core.config import get_settings
+from core.index_lock import index_lock
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class BM25Store:
     """
 
     INDEX_FILE = "bm25_index.pkl"
+    LOCK_FILE = ".bm25.write.lock"
 
     def __init__(self):
         settings = get_settings()
@@ -90,6 +92,17 @@ class BM25Store:
                 logger.info(f"BM25 index loaded: {len(self._meta)} documents")
             except Exception as exc:
                 logger.warning(f"Could not load BM25 index: {exc}")
+
+    def _reload_from_disk_under_lock(self) -> None:
+        """Refresh in-memory state from disk.
+
+        Important when multiple processes mutate the index file.
+        Callers should already hold the index lock.
+        """
+        self._bm25 = None
+        self._corpus_tokens = []
+        self._meta = []
+        self._load()
 
     def _save(self):
         try:
@@ -121,21 +134,25 @@ class BM25Store:
         if not chunks:
             return 0
 
-        for chunk in chunks:
-            tokens = _tokenize(chunk.text)
-            self._corpus_tokens.append(tokens)
-            self._meta.append({
-                "chunk_id":    chunk.chunk_id,
-                "document_id": chunk.document_id,
-                "text":        chunk.text,
-                "page":        chunk.page,
-                "section":     chunk.section,
-            })
+        lock_path = self.index_dir / self.LOCK_FILE
+        with index_lock(lock_path, metadata={"op": "add_chunks", "count": len(chunks)}):
+            self._reload_from_disk_under_lock()
 
-        self._rebuild_index()
-        self._save()
-        logger.info(f"Added {len(chunks)} chunks to BM25 (total: {len(self._meta)})")
-        return len(chunks)
+            for chunk in chunks:
+                tokens = _tokenize(chunk.text)
+                self._corpus_tokens.append(tokens)
+                self._meta.append({
+                    "chunk_id":    chunk.chunk_id,
+                    "document_id": chunk.document_id,
+                    "text":        chunk.text,
+                    "page":        chunk.page,
+                    "section":     chunk.section,
+                })
+
+            self._rebuild_index()
+            self._save()
+            logger.info(f"Added {len(chunks)} chunks to BM25 (total: {len(self._meta)})")
+            return len(chunks)
 
     def search(self, query: str, top_k: int = 10) -> List[Tuple[dict, float]]:
         """Search the BM25 index. Returns list of (metadata_dict, score)."""
@@ -173,27 +190,31 @@ class BM25Store:
 
     def delete_document(self, document_id: str) -> int:
         """Remove all entries for a document and rebuild index."""
-        keep = [
-            (tokens, meta)
-            for tokens, meta in zip(self._corpus_tokens, self._meta)
-            if meta["document_id"] != document_id
-        ]
-        removed = len(self._meta) - len(keep)
-        if removed == 0:
-            return 0
+        lock_path = self.index_dir / self.LOCK_FILE
+        with index_lock(lock_path, metadata={"op": "delete_document", "document_id": document_id}):
+            self._reload_from_disk_under_lock()
 
-        if keep:
-            self._corpus_tokens, self._meta = zip(*keep)
-            self._corpus_tokens = list(self._corpus_tokens)
-            self._meta = list(self._meta)
-        else:
-            self._corpus_tokens = []
-            self._meta = []
+            keep = [
+                (tokens, meta)
+                for tokens, meta in zip(self._corpus_tokens, self._meta)
+                if meta["document_id"] != document_id
+            ]
+            removed = len(self._meta) - len(keep)
+            if removed == 0:
+                return 0
 
-        self._rebuild_index()
-        self._save()
-        logger.info(f"Deleted {removed} entries from BM25 for document {document_id}")
-        return removed
+            if keep:
+                self._corpus_tokens, self._meta = zip(*keep)
+                self._corpus_tokens = list(self._corpus_tokens)
+                self._meta = list(self._meta)
+            else:
+                self._corpus_tokens = []
+                self._meta = []
+
+            self._rebuild_index()
+            self._save()
+            logger.info(f"Deleted {removed} entries from BM25 for document {document_id}")
+            return removed
 
     @property
     def total_documents(self) -> int:

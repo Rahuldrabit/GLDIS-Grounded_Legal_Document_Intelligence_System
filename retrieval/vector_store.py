@@ -16,6 +16,7 @@ import numpy as np
 
 from core.config import get_settings
 from core.schemas import Chunk
+from core.index_lock import index_lock
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ class FAISSStore:
 
     INDEX_FILE = "index.faiss"
     META_FILE  = "metadata.pkl"
+    LOCK_FILE = ".faiss.write.lock"
 
     def __init__(self):
         settings = get_settings()
@@ -96,6 +98,17 @@ class FAISSStore:
         except Exception as exc:
             logger.warning(f"Could not load FAISS index: {exc}")
 
+    def _reload_from_disk_under_lock(self) -> None:
+        """Refresh in-memory state from disk.
+
+        This is important when multiple processes mutate the index files.
+        Callers should already hold the index lock.
+        """
+        # Reset and reload so we don't keep stale references
+        self._index = None
+        self._meta = []
+        self._load()
+
     def _save(self):
         try:
             import faiss
@@ -113,32 +126,37 @@ class FAISSStore:
             return 0
         import faiss
 
-        texts = [c.text for c in chunks]
-        embeddings = embed_texts(texts)
-        if embeddings is None:
-            logger.error("Embedding generation failed; skipping FAISS add.")
-            return 0
+        lock_path = self.index_dir / self.LOCK_FILE
+        with index_lock(lock_path, metadata={"op": "add_chunks", "count": len(chunks)}):
+            # Ensure we see the latest on-disk state before mutating
+            self._reload_from_disk_under_lock()
 
-        dim = embeddings.shape[1]
+            texts = [c.text for c in chunks]
+            embeddings = embed_texts(texts)
+            if embeddings is None:
+                logger.error("Embedding generation failed; skipping FAISS add.")
+                return 0
 
-        if self._index is None:
-            self._index = faiss.IndexFlatIP(dim)  # Inner product = cosine (normalized)
-            logger.info(f"Created new FAISS index dim={dim}")
+            dim = embeddings.shape[1]
 
-        self._index.add(embeddings)
+            if self._index is None:
+                self._index = faiss.IndexFlatIP(dim)  # Inner product = cosine (normalized)
+                logger.info(f"Created new FAISS index dim={dim}")
 
-        for chunk in chunks:
-            self._meta.append({
-                "chunk_id":    chunk.chunk_id,
-                "document_id": chunk.document_id,
-                "text":        chunk.text,
-                "page":        chunk.page,
-                "section":     chunk.section,
-            })
+            self._index.add(embeddings)
 
-        self._save()
-        logger.info(f"Added {len(chunks)} chunks to FAISS (total: {self._index.ntotal})")
-        return len(chunks)
+            for chunk in chunks:
+                self._meta.append({
+                    "chunk_id":    chunk.chunk_id,
+                    "document_id": chunk.document_id,
+                    "text":        chunk.text,
+                    "page":        chunk.page,
+                    "section":     chunk.section,
+                })
+
+            self._save()
+            logger.info(f"Added {len(chunks)} chunks to FAISS (total: {self._index.ntotal})")
+            return len(chunks)
 
     def search(
         self, query: str, top_k: int = 10
@@ -167,35 +185,39 @@ class FAISSStore:
 
     def delete_document(self, document_id: str) -> int:
         """Remove all vectors for a document (rebuilds index)."""
-        if self._index is None:
-            return 0
-        import faiss
+        lock_path = self.index_dir / self.LOCK_FILE
+        with index_lock(lock_path, metadata={"op": "delete_document", "document_id": document_id}):
+            self._reload_from_disk_under_lock()
 
-        keep_indices = [
-            i for i, m in enumerate(self._meta)
-            if m["document_id"] != document_id
-        ]
-        removed = len(self._meta) - len(keep_indices)
+            if self._index is None:
+                return 0
+            import faiss
 
-        if removed == 0:
-            return 0
+            keep_indices = [
+                i for i, m in enumerate(self._meta)
+                if m["document_id"] != document_id
+            ]
+            removed = len(self._meta) - len(keep_indices)
 
-        # Rebuild keeping only the retained vectors
-        old_meta = self._meta
-        dim = self._index.d
+            if removed == 0:
+                return 0
 
-        all_vecs = np.zeros((self._index.ntotal, dim), dtype=np.float32)
-        self._index.reconstruct_n(0, self._index.ntotal, all_vecs)
+            # Rebuild keeping only the retained vectors
+            old_meta = self._meta
+            dim = self._index.d
 
-        kept_vecs = all_vecs[keep_indices]
-        self._index = faiss.IndexFlatIP(dim)
-        if len(kept_vecs):
-            self._index.add(kept_vecs)
-        self._meta = [old_meta[i] for i in keep_indices]
-        self._save()
+            all_vecs = np.zeros((self._index.ntotal, dim), dtype=np.float32)
+            self._index.reconstruct_n(0, self._index.ntotal, all_vecs)
 
-        logger.info(f"Deleted {removed} vectors for document {document_id}")
-        return removed
+            kept_vecs = all_vecs[keep_indices]
+            self._index = faiss.IndexFlatIP(dim)
+            if len(kept_vecs):
+                self._index.add(kept_vecs)
+            self._meta = [old_meta[i] for i in keep_indices]
+            self._save()
+
+            logger.info(f"Deleted {removed} vectors for document {document_id}")
+            return removed
 
     @property
     def total_vectors(self) -> int:

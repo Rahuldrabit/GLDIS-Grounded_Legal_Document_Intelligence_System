@@ -264,6 +264,22 @@ class HybridOCR:
         vlm_logs: List[dict] = []
 
         ext = Path(file_path).suffix.lower()
+        if ext == ".txt":
+            try:
+                text = Path(file_path).read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                text = Path(file_path).read_text(encoding="utf-8", errors="ignore")
+
+            pages = [
+                PageOCRResult(
+                    page=1,
+                    text=text,
+                    confidence=1.0,
+                    engine=OCREngine.PYMUPDF,
+                    blocks=[],
+                )
+            ]
+            return DocumentOCRResult(document_id=document_id, pages=pages, vlm_logs=[])
         is_pdf = ext == ".pdf"
 
         # ── Forced engine (API override) ─────────────────────────────────────

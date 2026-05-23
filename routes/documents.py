@@ -9,6 +9,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import update
 
 from core.config import get_settings
 from core.schemas import DocumentStatus, ProcessResponse, UploadResponse, DocumentDetailResponse, DocumentListResponse
@@ -72,23 +73,63 @@ def process_document(
     doc = db.query(models.Document).filter(models.Document.id == document_id).first()
     if not doc:
         raise HTTPException(404, f"Document {document_id} not found.")
-    if doc.status == DocumentStatus.PROCESSING.value:
-        raise HTTPException(409, "Document is already being processed.")
+
+    status_before_processing = str(doc.status)
+
+    # Atomic state transition: prevent double-enqueue under concurrency.
+    if doc.status == DocumentStatus.READY.value:
+        return ProcessResponse(
+            document_id=document_id,
+            status=DocumentStatus.READY,
+            chunks_created=0,
+            entities_extracted=0,
+            message="Document already processed.",
+        )
+
+    result = db.execute(
+        update(models.Document)
+        .where(
+            models.Document.id == document_id,
+            models.Document.status.notin_([
+                DocumentStatus.PROCESSING.value,
+                DocumentStatus.READY.value,
+            ]),
+        )
+        .values(status=DocumentStatus.PROCESSING.value, error_message=None)
+    )
+    db.commit()
+
+    if result.rowcount == 0:
+        # Re-check status for correct error reporting
+        doc = db.query(models.Document).filter(models.Document.id == document_id).first()
+        if not doc:
+            raise HTTPException(404, f"Document {document_id} not found.")
+        if doc.status == DocumentStatus.PROCESSING.value:
+            raise HTTPException(409, "Document is already being processed.")
+        if doc.status == DocumentStatus.READY.value:
+            return ProcessResponse(
+                document_id=document_id,
+                status=DocumentStatus.READY,
+                chunks_created=0,
+                entities_extracted=0,
+                message="Document already processed.",
+            )
+        raise HTTPException(409, f"Document cannot be processed in status: {doc.status}")
 
     # Run pipeline in background
-    def _run(doc_id: str):
+    def _run(doc_id: str, prev_status: str):
         from db.session import get_session_factory
         SessionLocal = get_session_factory()
         bg_db = SessionLocal()
         try:
-            run_pipeline(doc_id, bg_db)
+            run_pipeline(doc_id, bg_db, previous_status=prev_status)
         except Exception as exc:
             import logging
             logging.getLogger(__name__).error(f"Pipeline failed for {doc_id}: {exc}")
         finally:
             bg_db.close()
 
-    background_tasks.add_task(_run, document_id)
+    background_tasks.add_task(_run, document_id, status_before_processing)
 
     return ProcessResponse(
         document_id=document_id,
