@@ -13,14 +13,14 @@ def test_resolve_openrouter_when_explicit_provider():
 
     settings.llm_provider = "openrouter"
     settings.openrouter_api_key = "or-test-key"
-    settings.openrouter_model = "openai/gpt-4o-mini"
+    settings.openrouter_model = "google/gemma-4-31b-it:free"
     settings.openrouter_base_url = "https://openrouter.ai/api/v1"
 
     try:
         cfg = resolve_llm_config(mode="text")
         assert cfg.provider == "openrouter"
         assert cfg.api_key == "or-test-key"
-        assert cfg.model == "openai/gpt-4o-mini"
+        assert cfg.model == "google/gemma-4-31b-it:free"
         assert cfg.base_url == "https://openrouter.ai/api/v1"
     finally:
         settings.llm_provider = old_provider

@@ -69,7 +69,7 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
     elif provider == "openrouter":
         base_url = _as_text(getattr(settings, "openrouter_base_url", "https://openrouter.ai/api/v1")) or "https://openrouter.ai/api/v1"
         api_key = openrouter_api_key
-        model = _as_text(getattr(settings, "openrouter_model", "openai/gpt-4o-mini")) or "openai/gpt-4o-mini"
+        model = _as_text(getattr(settings, "openrouter_model", "google/gemma-4-31b-it:free")) or "google/gemma-4-31b-it:free"
         supports_json_mode = True
     else:
         base_url = llm_base_url or vlm_api_base

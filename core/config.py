@@ -34,11 +34,11 @@ class Settings(BaseSettings):
     # ── OpenRouter (OpenAI-compatible provider) ────────────────────────────────
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "openai/gpt-4o-mini"
+    openrouter_model: str = "google/gemma-4-31b-it:free"
 
     # ── API Rate Limiting (LLM-heavy endpoints) ────────────────────────────────
     llm_rate_limit_enabled: bool = True
-    llm_rate_limit_requests: int = 30
+    llm_rate_limit_requests: int = 10
     llm_rate_limit_window_seconds: int = 60
 
     # ── VLM (Qwen2.5-VL via LM Studio — primary document understanding) ───────

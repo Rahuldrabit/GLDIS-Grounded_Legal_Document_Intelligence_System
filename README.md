@@ -119,7 +119,7 @@ For local providers, keep the relevant `*_API_BASE` pointed at your OpenAI-compa
 ```env
 OPENROUTER_API_KEY=your_openrouter_api_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_MODEL=google/gemma-4-31b-it:free
 ```
 
 If you leave `LLM_PROVIDER` blank, the app keeps the previous auto-selection behavior for legacy calls.
