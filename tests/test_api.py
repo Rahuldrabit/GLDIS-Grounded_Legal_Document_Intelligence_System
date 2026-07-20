@@ -112,6 +112,34 @@ def test_search_returns_results_structure(client):
     assert "results" in data
 
 
+def test_search_rate_limit_returns_429(client):
+    from core.config import get_settings
+    from core.rate_limit import reset_rate_limiter_state
+
+    settings = get_settings()
+    old_enabled = settings.llm_rate_limit_enabled
+    old_requests = settings.llm_rate_limit_requests
+    old_window = settings.llm_rate_limit_window_seconds
+
+    settings.llm_rate_limit_enabled = True
+    settings.llm_rate_limit_requests = 1
+    settings.llm_rate_limit_window_seconds = 60
+    reset_rate_limiter_state()
+
+    try:
+        first = client.post("/api/search", params={"query": "lease agreement", "top_k": 1})
+        assert first.status_code == 200
+
+        second = client.post("/api/search", params={"query": "lease agreement", "top_k": 1})
+        assert second.status_code == 429
+        assert "Rate limit exceeded" in second.json()["detail"]
+    finally:
+        settings.llm_rate_limit_enabled = old_enabled
+        settings.llm_rate_limit_requests = old_requests
+        settings.llm_rate_limit_window_seconds = old_window
+        reset_rate_limiter_state()
+
+
 def test_feedback_history_empty(client):
     r = client.get("/api/feedback/history")
     assert r.status_code == 200

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from core.schemas import DraftRequest, DraftResponse, DocumentStatus, EvidenceChunk
+from core.rate_limit import rate_limit_guard
 from db import models
 from db.session import get_db
 from feedback.improvement_loop import ImprovementLoop
@@ -19,7 +20,11 @@ _generator = DraftGenerator()
 _improvement_loop = ImprovementLoop()
 
 
-@router.post("/generate", response_model=DraftResponse)
+@router.post(
+    "/generate",
+    response_model=DraftResponse,
+    dependencies=[rate_limit_guard(scope="llm_generate")],
+)
 def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
     """
     Generate a grounded Case Fact Summary + Internal Memo.

@@ -1,7 +1,8 @@
 """Shared helpers for OpenAI-compatible LLM providers.
 
 This module centralizes provider selection so the rest of the codebase can
-switch between LM Studio, Ollama, and OpenAI through configuration only.
+switch between LM Studio, Ollama, OpenAI, and OpenRouter through configuration
+only.
 """
 from __future__ import annotations
 
@@ -29,6 +30,8 @@ def _normalize_provider(provider: str) -> str:
         return "ollama"
     if provider in {"openai"}:
         return "openai"
+    if provider in {"openrouter"}:
+        return "openrouter"
     return "lmstudio"
 
 
@@ -40,6 +43,7 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
     settings = get_settings()
     provider_override = _as_text(getattr(settings, "llm_provider", "")).strip().lower()
     openai_api_key = _as_text(getattr(settings, "openai_api_key", ""))
+    openrouter_api_key = _as_text(getattr(settings, "openrouter_api_key", ""))
     llm_api_key = _as_text(getattr(settings, "llm_api_key", ""))
     llm_base_url = _as_text(getattr(settings, "llm_base_url", ""))
     vlm_api_base = _as_text(getattr(settings, "vlm_api_base", ""))
@@ -50,6 +54,8 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
         provider = _normalize_provider(provider_override)
     elif mode == "vision" and bool(getattr(settings, "vlm_enabled", False)):
         provider = "lmstudio"
+    elif openrouter_api_key:
+        provider = "openrouter"
     elif openai_api_key and openai_api_key != "sk-your-key-here":
         provider = "openai"
     else:
@@ -59,6 +65,11 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
         base_url = _as_text(getattr(settings, "openai_base_url", "https://api.openai.com/v1")) or "https://api.openai.com/v1"
         api_key = openai_api_key
         model = _as_text(getattr(settings, "openai_model", "gpt-4.1")) or "gpt-4.1"
+        supports_json_mode = True
+    elif provider == "openrouter":
+        base_url = _as_text(getattr(settings, "openrouter_base_url", "https://openrouter.ai/api/v1")) or "https://openrouter.ai/api/v1"
+        api_key = openrouter_api_key
+        model = _as_text(getattr(settings, "openrouter_model", "google/gemma-4-31b-it:free")) or "google/gemma-4-31b-it:free"
         supports_json_mode = True
     else:
         base_url = llm_base_url or vlm_api_base
