@@ -73,11 +73,21 @@ def run_pipeline(document_id: str, db: Session, *, previous_status: Optional[str
         raise ValueError(f"Document {document_id} not found.")
 
     settings = get_settings()
-    file_path = str(Path(settings.upload_dir) / doc.filename)
-
-    if not Path(file_path).exists():
-        _set_status(db, doc, DocumentStatus.FAILED, f"File not found: {file_path}")
-        raise FileNotFoundError(file_path)
+    file_path_obj = Path(settings.upload_dir) / doc.filename
+    temp_source_file: Optional[str] = None
+    if not file_path_obj.exists():
+        if doc.file_content:
+            suffix = Path(doc.filename).suffix or ".tmp"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+                tmp_file.write(doc.file_content)
+                temp_source_file = tmp_file.name
+            file_path_obj = Path(temp_source_file)
+            logger.info(f"[{document_id}] Source file restored from DB blob into temp storage.")
+        else:
+            missing_path = str(file_path_obj)
+            _set_status(db, doc, DocumentStatus.FAILED, f"File not found: {missing_path}")
+            raise FileNotFoundError(missing_path)
+    file_path = str(file_path_obj)
 
     status_before_processing = previous_status or doc.status
     _set_status(db, doc, DocumentStatus.PROCESSING)
@@ -301,6 +311,8 @@ def run_pipeline(document_id: str, db: Session, *, previous_status: Optional[str
         if tmp_dir:
             import shutil
             shutil.rmtree(tmp_dir, ignore_errors=True)
+        if temp_source_file:
+            Path(temp_source_file).unlink(missing_ok=True)
 
 
 def get_structured_extraction(document_id: str, db: Session) -> StructuredExtraction:
