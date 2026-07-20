@@ -24,12 +24,22 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
 
     # ── LLM Provider ────────────────────────────────────────────────────────
-    # Supported values: lmstudio, ollama, openai
+    # Supported values: lmstudio, ollama, openai, openrouter
     llm_provider: str = ""
     llm_model: str = "qwen/qwen3-vl-4b"
     llm_base_url: str = "http://localhost:1234/v1"
     llm_api_key: str = "lm-studio"
     llm_max_tokens: int = 1200
+
+    # ── OpenRouter (OpenAI-compatible provider) ────────────────────────────────
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "openai/gpt-4o-mini"
+
+    # ── API Rate Limiting (LLM-heavy endpoints) ────────────────────────────────
+    llm_rate_limit_enabled: bool = True
+    llm_rate_limit_requests: int = 30
+    llm_rate_limit_window_seconds: int = 60
 
     # ── VLM (Qwen2.5-VL via LM Studio — primary document understanding) ───────
     # Set vlm_enabled=true and point vlm_api_base at a running LM Studio server.

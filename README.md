@@ -42,7 +42,7 @@ python -m spacy download en_core_web_sm
 
 ```bash
 copy .env.example .env
-# Edit .env — set LLM_PROVIDER=lmstudio, ollama, or openai
+# Edit .env — set LLM_PROVIDER=lmstudio, ollama, openai, or openrouter
 # Leave LLM_PROVIDER blank to keep the legacy auto-selection behavior
 ```
 
@@ -110,9 +110,23 @@ LLM_PROVIDER=lmstudio
 LLM_PROVIDER=ollama
 # or
 LLM_PROVIDER=openai
+# or
+LLM_PROVIDER=openrouter
 ```
 
-For local providers, keep the relevant `*_API_BASE` pointed at your OpenAI-compatible server. If you leave `LLM_PROVIDER` blank, the app keeps the previous auto-selection behavior for legacy calls.
+For local providers, keep the relevant `*_API_BASE` pointed at your OpenAI-compatible server. For OpenRouter, set:
+
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
+
+If you leave `LLM_PROVIDER` blank, the app keeps the previous auto-selection behavior for legacy calls.
+
+## Render Deployment
+
+This repository now includes a `render.yaml` blueprint for backend deployment using the existing Dockerfile (`main:app`), with health checks at `/health` and environment placeholders for OpenRouter/OpenAI keys plus rate-limit controls.
 
 ---
 

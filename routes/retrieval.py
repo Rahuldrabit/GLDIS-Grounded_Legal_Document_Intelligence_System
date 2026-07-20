@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from core.schemas import EvidenceChunk, SearchResultResponse, EvidenceChunkResponse
+from core.rate_limit import rate_limit_guard
 from db import models
 from db.session import get_db
 from retrieval.hybrid_retriever import HybridRetriever
@@ -15,7 +16,11 @@ router = APIRouter(prefix="/api/search", tags=["retrieval"])
 _retriever = HybridRetriever()
 
 
-@router.post("", response_model=SearchResultResponse)
+@router.post(
+    "",
+    response_model=SearchResultResponse,
+    dependencies=[rate_limit_guard(scope="llm_search")],
+)
 def search(
     query: str,
     document_id: Optional[str] = None,
