@@ -1,7 +1,6 @@
 """Routes: Document upload, process, list, delete."""
 from __future__ import annotations
 
-import shutil
 import uuid
 from pathlib import Path
 
@@ -38,9 +37,10 @@ async def upload_document(
     dest = Path(settings.upload_dir) / safe_name
 
     try:
+        file_bytes = await file.read()
         with open(dest, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        file_size = dest.stat().st_size
+            f.write(file_bytes)
+        file_size = len(file_bytes)
     except Exception as exc:
         raise HTTPException(500, f"File storage failed: {exc}")
 
@@ -50,6 +50,7 @@ async def upload_document(
         original_filename=file.filename,
         mime_type=file.content_type or "application/octet-stream",
         file_size=file_size,
+        file_content=file_bytes,
         status=DocumentStatus.UPLOADED.value,
     )
     db.add(doc)

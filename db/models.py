@@ -11,6 +11,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
 )
@@ -34,6 +35,7 @@ class Document(Base):
     original_filename = Column(String, nullable=False)
     mime_type = Column(String, default="application/octet-stream")
     file_size = Column(Integer, default=0)
+    file_content = Column(LargeBinary, nullable=True)
     status = Column(String, default="uploaded")  # DocumentStatus values
     page_count = Column(Integer, default=0)
     upload_time = Column(DateTime, default=datetime.utcnow)

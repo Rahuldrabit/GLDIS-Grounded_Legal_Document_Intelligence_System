@@ -62,6 +62,17 @@ def test_upload_txt_file(client):
     assert "document_id" in data
     assert data["status"] == "uploaded"
 
+    from db import models
+    from db.session import get_session_factory
+
+    session = get_session_factory()()
+    try:
+        doc = session.query(models.Document).filter(models.Document.id == data["document_id"]).first()
+        assert doc is not None
+        assert doc.file_content == content
+    finally:
+        session.close()
+
 
 def test_process_txt_sync(client: TestClient, txt_document_id: str):
     r = client.post(f"/api/documents/{txt_document_id}/process/sync")
