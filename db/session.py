@@ -60,10 +60,7 @@ def _ensure_file_content_column(engine) -> None:
     if "file_content" in existing_cols:
         return
 
-    if engine.dialect.name == "postgresql":
-        ddl = "ALTER TABLE documents ADD COLUMN file_content BYTEA"
-    else:
-        ddl = "ALTER TABLE documents ADD COLUMN file_content BLOB"
+    ddl = "ALTER TABLE documents ADD COLUMN file_content BLOB"
 
     try:
         with engine.begin() as conn:

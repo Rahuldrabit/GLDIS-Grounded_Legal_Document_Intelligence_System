@@ -64,6 +64,52 @@ async def upload_document(
     )
 
 
+from fastapi import Header
+import os
+import tempfile
+from vlm.parser import VLMParser
+
+@router.post("/vlm-extract")
+async def stateless_vlm_extract(
+    file: UploadFile = File(...),
+    x_llm_provider: str = Header(None, alias="X-LLM-Provider"),
+    x_llm_api_key: str = Header(None, alias="X-LLM-Api-Key"),
+    x_llm_model: str = Header(None, alias="X-LLM-Model"),
+    x_llm_base_url: str = Header(None, alias="X-LLM-Base-Url"),
+):
+    """Stateless VLM extraction endpoint. Does not save to DB."""
+    allowed = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"}
+    ext = Path(file.filename).suffix.lower()
+    if ext not in allowed:
+        raise HTTPException(400, f"Unsupported file type: {ext}. Allowed: {allowed}")
+
+    try:
+        file_bytes = await file.read()
+        
+        # Write to a temporary file
+        fd, temp_path = tempfile.mkstemp(suffix=ext)
+        with os.fdopen(fd, 'wb') as f:
+            f.write(file_bytes)
+            
+        parser = VLMParser()
+        result = parser.parse_document_image(
+            temp_path,
+            header_provider=x_llm_provider,
+            header_api_key=x_llm_api_key,
+            header_model=x_llm_model,
+            header_base_url=x_llm_base_url
+        )
+        
+        os.remove(temp_path)
+        
+        if "error" in result and result["error"] and result["error"] != "No VLM client available.":
+            raise HTTPException(500, f"Extraction failed: {result['error']}")
+            
+        return result
+    except Exception as exc:
+        raise HTTPException(500, f"Stateless extraction failed: {exc}")
+
+
 @router.post("/{document_id}/process", response_model=ProcessResponse)
 def process_document(
     document_id: str,

@@ -1,0 +1,85 @@
+.step1-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.upload-header h2 {
+  margin: 0;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border-color);
+  padding: 60px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: 24px;
+}
+
+.drop-zone:hover, .drop-zone.drag-active {
+  border-color: var(--accent-primary);
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.drop-text p {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.drop-text .sub-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.file-selected .file-name {
+  font-weight: 600;
+  color: var(--accent-primary);
+  margin: 0 0 8px 0;
+}
+
+.file-selected .file-size {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.extraction-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.extract-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+}
+
+.extract-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-alert {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--error);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+}

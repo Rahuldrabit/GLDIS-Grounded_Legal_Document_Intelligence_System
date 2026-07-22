@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { api, DocumentDetailResponse, DraftResponse } from '../api/client';
+import { api } from '../api/client';
+import type { DocumentDetailResponse, DraftResponse } from '../api/client';
 import './DocumentDetail.css';
 
 interface DocumentDetailProps {
   documentId: string;
-  onNavigate: (page: string, params?: any) => void;
+  onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
 export const DocumentDetail: React.FC<DocumentDetailProps> = ({ documentId, onNavigate }) => {
@@ -19,8 +20,8 @@ export const DocumentDetail: React.FC<DocumentDetailProps> = ({ documentId, onNa
       try {
         const data = await api.getDocument(documentId);
         setDoc(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError((err as Error).message);
       } finally {
         setLoading(false);
       }
@@ -34,8 +35,8 @@ export const DocumentDetail: React.FC<DocumentDetailProps> = ({ documentId, onNa
     try {
       const data = await api.generateDraft(documentId);
       setDraft(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setGenerating(false);
     }

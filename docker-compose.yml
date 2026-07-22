@@ -2,30 +2,10 @@ version: '3.9'
 
 services:
 
-  # ── PostgreSQL ────────────────────────────────────────────────────────────
-  db:
-    image: postgres:15-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: gldis
-      POSTGRES_PASSWORD: gldis_secret
-      POSTGRES_DB: gldis
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gldis"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # ── Redis (for future Celery task queue) ─────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -40,9 +20,6 @@ services:
       NEO4J_AUTH: neo4j/gldis_secret
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_apoc_export_allow__all__imports: "true"
-    ports:
-      - "7687:7687"
-      - "7474:7474"
     volumes:
       - neo4j_data:/var/lib/neo4j/data
       - neo4j_logs:/var/lib/neo4j/logs
@@ -58,9 +35,11 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      # Database — PostgreSQL
-      - DATABASE_URL=postgresql://gldis:gldis_secret@db:5432/gldis
+      # Database — SQLite (or stateless)
+      - DATABASE_URL=sqlite:///./data/gldis.db
 
       # OpenAI (pass from host shell: export OPENAI_API_KEY=sk-...)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -103,8 +82,6 @@ services:
       - REDIS_URL=redis://redis:6379/0
 
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
       neo4j:
@@ -115,6 +92,5 @@ services:
       - "host.docker.internal:host-gateway"
 
 volumes:
-  postgres_data:
   neo4j_data:
   neo4j_logs:

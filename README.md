@@ -23,6 +23,9 @@ Document
 ```
 
 ---
+## Live URL
+https://gldis-grounded-legal-document.onrender.com/
+
 
 ## Quickstart
 
@@ -139,7 +142,6 @@ copy .env.example .env
 
 docker-compose up --build
 # API: http://localhost:8000
-# PostgreSQL: localhost:5432
 ```
 
 ## Full Local Integration Test
@@ -218,9 +220,9 @@ python -m pytest tests/test_ocr.py tests/test_retrieval.py tests/test_generation
 | **Memory** | Mem0 | Feedback memory and preference capture |
 | **Export** | JSONL DPO export | Offline preference tuning |
 | **Backend** | FastAPI + SQLAlchemy | REST API + ORM |
-| **Database** | SQLite (dev) / PostgreSQL (prod) | Document, chunk, draft, feedback storage |
+| **Database** | SQLite (dev/prod) | Document, chunk, draft, feedback storage |
 | **Frontend** | Vanilla JS + CSS | Zero-build UI with evidence highlighting |
-| **Containerisation** | Docker + docker-compose | PostgreSQL + Redis + API |
+| **Containerisation** | Docker + docker-compose | Redis + API |
 
 ---
 
@@ -302,7 +304,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation of each stage.
 ├── tests/              # Pytest test suite (unit + integration)
 ├── vlm/                # VLMParser class (wraps ocr/vlm_extractor)
 ├── .env.example        # Environment variable template
-├── docker-compose.yml  # PostgreSQL + Redis + API
+├── docker-compose.yml  # Redis + API
 ├── Dockerfile          # Production container image
 ├── main.py             # FastAPI application entrypoint
 ├── requirements.txt    # Python dependencies

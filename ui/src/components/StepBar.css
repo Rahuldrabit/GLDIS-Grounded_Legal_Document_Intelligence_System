@@ -1,0 +1,86 @@
+.step-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0 40px 0;
+  width: 100%;
+  max-width: 800px;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.step-item.active {
+  opacity: 1;
+}
+
+.step-item.past {
+  opacity: 0.8;
+}
+
+.step-item.locked {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+.step-item.active .step-circle {
+  border-color: var(--accent-primary);
+  background: rgba(var(--accent-primary-rgb), 0.1);
+  color: var(--accent-primary);
+  box-shadow: 0 0 12px rgba(var(--accent-primary-rgb), 0.4);
+}
+
+.step-item.past .step-circle {
+  border-color: var(--accent-secondary);
+  background: var(--accent-secondary);
+  color: #fff;
+}
+
+.step-label {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.step-item.active .step-label {
+  color: var(--accent-primary);
+  text-shadow: 0 0 8px rgba(var(--accent-primary-rgb), 0.4);
+}
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color);
+  margin: 0 16px;
+  position: relative;
+  top: -12px;
+  transition: all 0.3s ease;
+}
+
+.step-connector.filled {
+  background: var(--accent-secondary);
+}

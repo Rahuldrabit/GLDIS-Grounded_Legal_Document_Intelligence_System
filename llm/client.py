@@ -39,7 +39,13 @@ def _as_text(value: Any) -> str:
     return value if isinstance(value, str) else ""
 
 
-def resolve_llm_config(mode: str = "text") -> LLMConfig:
+def resolve_llm_config(
+    mode: str = "text",
+    header_provider: Optional[str] = None,
+    header_api_key: Optional[str] = None,
+    header_model: Optional[str] = None,
+    header_base_url: Optional[str] = None,
+) -> LLMConfig:
     settings = get_settings()
     provider_override = _as_text(getattr(settings, "llm_provider", "")).strip().lower()
     openai_api_key = _as_text(getattr(settings, "openai_api_key", ""))
@@ -50,7 +56,12 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
     llm_model = _as_text(getattr(settings, "llm_model", ""))
     vlm_model = _as_text(getattr(settings, "vlm_model", ""))
 
-    if provider_override:
+    # BYOK handling
+    if header_provider:
+        provider = _normalize_provider(header_provider)
+        if header_provider.strip().lower() == "google":
+            provider = "google"
+    elif provider_override:
         provider = _normalize_provider(provider_override)
     elif mode == "vision" and bool(getattr(settings, "vlm_enabled", False)):
         provider = "lmstudio"
@@ -61,23 +72,28 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
     else:
         provider = "lmstudio"
 
-    if provider == "openai":
+    if provider == "google":
+        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        api_key = header_api_key or _as_text(getattr(settings, "google_api_key", ""))
+        model = header_model or "gemini-2.5-flash"
+        supports_json_mode = True
+    elif provider == "openai":
         base_url = _as_text(getattr(settings, "openai_base_url", "https://api.openai.com/v1")) or "https://api.openai.com/v1"
-        api_key = openai_api_key
-        model = _as_text(getattr(settings, "openai_model", "gpt-4.1")) or "gpt-4.1"
+        api_key = header_api_key or openai_api_key
+        model = header_model or _as_text(getattr(settings, "openai_model", "gpt-4o-mini")) or "gpt-4o-mini"
         supports_json_mode = True
     elif provider == "openrouter":
         base_url = _as_text(getattr(settings, "openrouter_base_url", "https://openrouter.ai/api/v1")) or "https://openrouter.ai/api/v1"
-        api_key = openrouter_api_key
-        model = _as_text(getattr(settings, "openrouter_model", "google/gemma-4-31b-it:free")) or "google/gemma-4-31b-it:free"
+        api_key = header_api_key or openrouter_api_key
+        model = header_model or _as_text(getattr(settings, "openrouter_model", "google/gemma-4-31b-it:free")) or "google/gemma-4-31b-it:free"
         supports_json_mode = True
     else:
-        base_url = llm_base_url or vlm_api_base
-        api_key = llm_api_key or "lm-studio"
-        model = llm_model or vlm_model
+        base_url = header_base_url or llm_base_url or vlm_api_base
+        api_key = header_api_key or llm_api_key or "lm-studio"
+        model = header_model or llm_model or vlm_model
         supports_json_mode = False if provider in {"lmstudio", "ollama"} else True
 
-    if mode == "vision" and provider != "openai":
+    if mode == "vision" and provider not in {"openai", "google", "openrouter"}:
         supports_json_mode = False
 
     max_tokens = int(getattr(settings, "llm_max_tokens", 0) or 0) if mode == "text" else int(getattr(settings, "vlm_max_tokens", 0) or 0)
@@ -94,15 +110,32 @@ def resolve_llm_config(mode: str = "text") -> LLMConfig:
     )
 
 
-def create_openai_client(mode: str = "text"):
+def create_openai_client(
+    mode: str = "text",
+    header_provider: Optional[str] = None,
+    header_api_key: Optional[str] = None,
+    header_model: Optional[str] = None,
+    header_base_url: Optional[str] = None,
+):
     """Create an OpenAI client configured for the active provider."""
     try:
         from openai import OpenAI
     except ImportError as exc:
         raise RuntimeError("openai package not installed") from exc
 
-    config = resolve_llm_config(mode=mode)
-    return OpenAI(api_key=config.api_key, base_url=config.base_url)
+    config = resolve_llm_config(
+        mode=mode, 
+        header_provider=header_provider, 
+        header_api_key=header_api_key, 
+        header_model=header_model,
+        header_base_url=header_base_url
+    )
+    import httpx
+    return OpenAI(
+        api_key=config.api_key, 
+        base_url=config.base_url,
+        timeout=httpx.Timeout(60.0, connect=5.0)
+    )
 
 
 def chat_completion(
@@ -113,10 +146,28 @@ def chat_completion(
     temperature: float = 0.1,
     max_tokens: Optional[int] = None,
     response_format: Optional[dict[str, Any]] = None,
+    header_provider: Optional[str] = None,
+    header_api_key: Optional[str] = None,
+    header_model: Optional[str] = None,
+    header_base_url: Optional[str] = None,
 ):
     """Call the active OpenAI-compatible chat completion endpoint."""
-    client = create_openai_client(mode=mode)
-    config = resolve_llm_config(mode=mode)
+    import openai
+    
+    client = create_openai_client(
+        mode=mode, 
+        header_provider=header_provider, 
+        header_api_key=header_api_key, 
+        header_model=header_model,
+        header_base_url=header_base_url
+    )
+    config = resolve_llm_config(
+        mode=mode,
+        header_provider=header_provider, 
+        header_api_key=header_api_key, 
+        header_model=header_model,
+        header_base_url=header_base_url
+    )
     request_kwargs: dict[str, Any] = {
         "model": model or config.model,
         "messages": messages,
@@ -125,4 +176,10 @@ def chat_completion(
     }
     if response_format is not None and config.supports_json_mode:
         request_kwargs["response_format"] = response_format
-    return client.chat.completions.create(**request_kwargs)
+        
+    try:
+        return client.chat.completions.create(**request_kwargs)
+    except openai.NotFoundError as e:
+        raise ValueError(f"Model '{request_kwargs['model']}' not found on provider '{config.provider}'. Please check your model name.") from e
+    except openai.APIConnectionError as e:
+        raise ValueError(f"Could not connect to {config.provider} at {config.base_url}. Is the service running?") from e

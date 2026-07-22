@@ -8,7 +8,7 @@ This directory contains environment-specific configuration profiles.
 |------|---------|
 | `settings.yaml` | Default settings with documentation |
 | `dev.yaml` | Local development overrides |
-| `prod.yaml` | Production overrides (use with PostgreSQL) |
+| `prod.yaml` | Production overrides |
 
 ## Usage
 

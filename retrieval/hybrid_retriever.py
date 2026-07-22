@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 from core.config import get_settings
 from core.schemas import Chunk, EvidenceChunk
 from retrieval.bm25_retriever import BM25Store
+from retrieval.graph_store import get_graph_store
 from retrieval.vector_store import FAISSStore
 
 logger = logging.getLogger(__name__)

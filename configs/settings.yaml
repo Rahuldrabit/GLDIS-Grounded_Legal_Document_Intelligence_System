@@ -6,7 +6,6 @@
 
 database:
   url: "sqlite:///./data/gldis.db"
-  # PostgreSQL: "postgresql://user:password@localhost:5432/gldis"
 
 openai:
   api_key: ""               # Set OPENAI_API_KEY env var

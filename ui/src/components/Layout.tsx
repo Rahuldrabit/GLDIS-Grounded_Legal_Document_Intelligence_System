@@ -3,7 +3,7 @@ import './Layout.css';
 
 interface LayoutProps {
   children: React.ReactNode;
-  onNavigate: (page: string, params?: any) => void;
+  onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, onNavigate }) => {

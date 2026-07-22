@@ -54,7 +54,14 @@ class VLMParser:
         self._client = object()
         logger.info(f"VLMParser using provider={config.provider} model={self._model}")
 
-    def parse_document_image(self, image_path: str) -> Dict[str, Any]:
+    def parse_document_image(
+        self, 
+        image_path: str,
+        header_provider: Optional[str] = None,
+        header_api_key: Optional[str] = None,
+        header_model: Optional[str] = None,
+        header_base_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Send an image to the VLM and return a structured dict.
 
@@ -63,15 +70,18 @@ class VLMParser:
             tables, handwritten_notes, signatures, key_obligations, confidence.
             On failure: {"error": str, "text": ""}.
         """
-        if self._client is None:
-            return {"error": "No VLM client available.", "text": ""}
-
-        logger.info(f"VLMParser: parsing {Path(image_path).name} with {self._model}")
+        logger.info(f"VLMParser: parsing {Path(image_path).name} with {header_model or self._model}")
 
         try:
             b64 = _encode_image(image_path)
 
-            config = resolve_llm_config(mode="vision")
+            config = resolve_llm_config(
+                mode="vision",
+                header_provider=header_provider,
+                header_api_key=header_api_key,
+                header_model=header_model,
+                header_base_url=header_base_url
+            )
 
             response = chat_completion(
                 messages=[
@@ -90,10 +100,14 @@ class VLMParser:
                     }
                 ],
                 mode="vision",
-                model=self._model,
+                model=config.model,
                 max_tokens=config.max_tokens,
                 temperature=0.1,
                 response_format={"type": "json_object"} if config.supports_json_mode else None,
+                header_provider=header_provider,
+                header_api_key=header_api_key,
+                header_model=header_model,
+                header_base_url=header_base_url
             )
 
             raw = response.choices[0].message.content or ""
@@ -109,6 +123,13 @@ class VLMParser:
             logger.error(f"VLMParser failed for {image_path}: {exc}")
             return {"error": str(exc), "text": ""}
 
-    def parse_batch(self, image_paths: List[str]) -> List[Dict[str, Any]]:
+    def parse_batch(
+        self, 
+        image_paths: List[str],
+        header_provider: Optional[str] = None,
+        header_api_key: Optional[str] = None,
+        header_model: Optional[str] = None,
+        header_base_url: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Parse multiple page images in sequence."""
-        return [self.parse_document_image(p) for p in image_paths]
+        return [self.parse_document_image(p, header_provider, header_api_key, header_model, header_base_url) for p in image_paths]

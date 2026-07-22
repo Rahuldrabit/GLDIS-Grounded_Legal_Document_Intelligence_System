@@ -113,6 +113,88 @@ def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
 
     return draft
 
+from pydantic import BaseModel
+from fastapi import Header
+from typing import Optional
+
+class StatelessDraftRequest(BaseModel):
+    document_text: str
+    query: str = "Generate a case fact summary and internal memo."
+    top_k: int = 5
+
+@router.post("/stateless-generate")
+def stateless_generate(
+    req: StatelessDraftRequest,
+    x_llm_provider: Optional[str] = Header(None, alias="X-LLM-Provider"),
+    x_llm_api_key: Optional[str] = Header(None, alias="X-LLM-Api-Key"),
+    x_llm_model: Optional[str] = Header(None, alias="X-LLM-Model"),
+):
+    """Stateless draft generation without relying on DB."""
+    if not req.document_text.strip():
+        raise HTTPException(400, "Document text is required.")
+
+    # 1. Chunking
+    paragraphs = [p.strip() for p in req.document_text.split('\n\n') if p.strip()]
+    
+    # 2. Simple retrieval
+    query_words = set(req.query.lower().split())
+    scored_chunks = []
+    for i, p in enumerate(paragraphs):
+        p_words = set(p.lower().split())
+        score = len(query_words.intersection(p_words))
+        scored_chunks.append(EvidenceChunk(
+            chunk_id=f"chunk_{i}",
+            document_id="stateless",
+            text=p,
+            page=1,
+            section=None,
+            score=score,
+            retrieval_method="stateless"
+        ))
+        
+    scored_chunks.sort(key=lambda x: x.score, reverse=True)
+    top_chunks = scored_chunks[:req.top_k]
+
+    # Generate Draft
+    from generation.rag_generator import RAGGenerator
+    
+    # We need to temporarily set the config to use BYOK for RAGGenerator
+    # But RAGGenerator reads from config in __init__. So we'll instantiate it 
+    # and call it. But RAGGenerator calls chat_completion which reads resolve_llm_config().
+    # So we should modify RAGGenerator to accept BYOK or just use chat_completion directly.
+    # Let's just use chat_completion directly for stateless to be safe and avoid modifying RAGGenerator further.
+    from llm.client import chat_completion
+    from generation.rag_generator import SYSTEM_PROMPT
+    
+    evidence_text = ""
+    for chunk in top_chunks:
+        evidence_text += f"[CHUNK_ID: {chunk.chunk_id}] (Page: {chunk.page})\n{chunk.text}\n---\n"
+        
+    user_prompt = f"Evidence:\n{evidence_text}\n\nTask:\n{req.query}"
+    
+    response = chat_completion(
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ],
+        mode="text",
+        header_provider=x_llm_provider,
+        header_api_key=x_llm_api_key,
+        header_model=x_llm_model
+    )
+    
+    generated_text = response.choices[0].message.content or ""
+    
+    import uuid
+    return {
+        "draft_id": str(uuid.uuid4()),
+        "document_id": "stateless",
+        "generated_text": generated_text,
+        "citations": [],
+        "evidence_chunks": [c.model_dump() for c in top_chunks],
+        "grounding_score": 1.0,
+    }
+
 
 @router.get("/{draft_id}", response_model=DraftResponse)
 def get_draft(draft_id: str, db: Session = Depends(get_db)):

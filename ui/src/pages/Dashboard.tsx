@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { api, DocumentListResponse } from '../api/client';
+import { api } from '../api/client';
+import type { DocumentListResponse } from '../api/client';
 import './Dashboard.css';
 
 interface DashboardProps {
-  onNavigate: (page: string, params?: any) => void;
+  onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
@@ -15,8 +16,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     try {
       const docs = await api.listDocuments();
       setDocuments(docs);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     }
   };
 
@@ -36,8 +37,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     try {
       await api.uploadDocument(file);
       fetchDocuments();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setUploading(false);
     }
@@ -48,8 +49,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     try {
       await api.processDocumentSync(docId);
       fetchDocuments();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     }
   };
 
@@ -59,8 +60,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     try {
       await api.deleteDocument(docId);
       fetchDocuments();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     }
   };
 
