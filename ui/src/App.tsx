@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { StepBar } from './components/StepBar';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { Step1Upload } from './pages/Step1Upload';
