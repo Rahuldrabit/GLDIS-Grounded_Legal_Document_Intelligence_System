@@ -62,14 +62,7 @@ app.include_router(drafts.router)
 app.include_router(feedback.router)
 app.include_router(retrieval.router)
 
-# Static UI
-static_dir = Path(__file__).parent / "static"
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-    @app.get("/", include_in_schema=False)
-    def serve_ui():
-        return FileResponse(str(static_dir / "index.html"))
 
 
 @app.get("/health", tags=["system"])
@@ -99,6 +92,20 @@ def system_status():
         "vlm_model": settings.vlm_model,
         "upload_dir": settings.upload_dir,
     }
+
+
+# Serve React UI in production
+ui_dist_dir = Path(__file__).parent / "ui" / "dist"
+if ui_dist_dir.exists():
+    app.mount("/", StaticFiles(directory=str(ui_dist_dir), html=True), name="ui")
+else:
+    # Fallback to legacy static UI if React build isn't found
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        @app.get("/", include_in_schema=False)
+        def serve_ui():
+            return FileResponse(str(static_dir / "index.html"))
 
 
 if __name__ == "__main__":

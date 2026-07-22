@@ -1,3 +1,12 @@
+# Stage 1: Build React UI
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app/ui
+COPY ui/package*.json ./
+RUN npm install
+COPY ui/ .
+RUN npm run build
+
+# Stage 2: Build Python Backend
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -25,6 +34,9 @@ RUN python -m spacy download en_core_web_sm || echo "spaCy model download failed
 
 # Copy application code
 COPY . .
+
+# Copy built React UI from Stage 1
+COPY --from=frontend-builder /app/ui/dist ./ui/dist
 
 # Create data directories
 RUN mkdir -p data/uploads data/faiss_index data/bm25_index data/feedback
